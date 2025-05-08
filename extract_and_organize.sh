@@ -1,13 +1,41 @@
 #!/bin/bash
 
 # Extract and organize chat data from VSCode's state.vscdb file
-# Usage: ./extract_and_organize.sh <path_to_state.vscdb>
+# Usage: ./extract_and_organize.sh [options] <path_to_state.vscdb>
+#
+# Options:
+#   -c, --clean     Use cleaned (sanitized) titles in the output index
 
 set -e  # Exit on error
 
+# Process command line arguments
+CLEAN_TITLES=0
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -c|--clean)
+      CLEAN_TITLES=1
+      shift # past argument
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      echo "Usage: ./extract_and_organize.sh [-c|--clean] <path_to_state.vscdb>"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+# Restore positional parameters
+set -- "${POSITIONAL_ARGS[@]}"
+
 # Check if a database file was provided
 if [ $# -lt 1 ]; then
-    echo "Usage: ./extract_and_organize.sh <path_to_state.vscdb>"
+    echo "Usage: ./extract_and_organize.sh [-c|--clean] <path_to_state.vscdb>"
     exit 1
 fi
 
@@ -17,6 +45,13 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 EXTRACTED_CHATS_DIR="extracted_chats"
 DEEP_SEARCH_DIR="found_matches"
 ORGANIZED_CHATS_DIR="organized_chats"
+
+# Display the title mode being used
+if [ $CLEAN_TITLES -eq 1 ]; then
+    echo "Using clean titles mode (sanitized markdown)"
+else
+    echo "Using regular titles mode"
+fi
 
 # Verify database file exists
 if [ ! -f "$DB_PATH" ]; then
@@ -46,8 +81,15 @@ echo ""
 
 # Step 3: Organize the extracted chats
 echo "Step 3: Organizing chat data..."
-python "$BASE_DIR/organize_chats.py" "$EXTRACTED_CHATS_DIR" "$ORGANIZED_CHATS_DIR"
-echo "Chat organization complete. Organized chats in: $ORGANIZED_CHATS_DIR"
+if [ $CLEAN_TITLES -eq 1 ]; then
+    # Use the updated script with cleaned titles
+    python "$BASE_DIR/organize_chats.py" "$EXTRACTED_CHATS_DIR" "$ORGANIZED_CHATS_DIR"
+    echo "Chat organization complete with clean titles. Organized chats in: $ORGANIZED_CHATS_DIR"
+else
+    # Use the backup script for original behavior (without title cleaning)
+    python "$BASE_DIR/organize_chats.py.bak" "$EXTRACTED_CHATS_DIR" "$ORGANIZED_CHATS_DIR"
+    echo "Chat organization complete with original titles. Organized chats in: $ORGANIZED_CHATS_DIR"
+fi
 echo ""
 
 # Create a summary file
@@ -59,10 +101,11 @@ echo "Creating summary file: $SUMMARY_FILE"
     echo "=============================="
     echo "Run on: $(date)"
     echo "Database: $DB_PATH"
+    echo "Title Mode: $([ $CLEAN_TITLES -eq 1 ] && echo 'Clean (sanitized)' || echo 'Regular')"
     echo ""
     echo "Output Directories:"
     echo "- Deep Search Results: $DEEP_SEARCH_DIR"
-    echo "- Extracted Chats: $EXTRACTED_CHATS_DIR"
+    echo "- Extracted Chats: $EXTRACTED_CHATS_DIR" 
     echo "- Organized Chats: $ORGANIZED_CHATS_DIR"
     echo ""
     echo "Next Steps:"

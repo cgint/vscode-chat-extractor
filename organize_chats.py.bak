@@ -15,18 +15,6 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Helper function to clean title text for display
-    def clean_title_text(text):
-        # Remove code blocks (both ``` and single line `)
-        text = re.sub(r'```[\s\S]*?```', '', text)
-        text = re.sub(r'`[^`]*`', '', text)
-        # Remove special markdown chars
-        text = re.sub(r'[#*_~\[\](){}]', '', text)
-        # Clean up whitespace (multiple spaces, newlines, etc)
-        text = re.sub(r'\s+', ' ', text)
-        # Strip leading/trailing whitespace
-        return text.strip()
-    
     # Step 1: Find all conversation files (legacy, might not be primary source for new logic)
     conversation_files = glob.glob(os.path.join(input_dir, "conversation_*.txt"))
     
@@ -197,16 +185,7 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
                             f.write("\n```\n\n") # End code block
                 
                 first_message_text = messages[0]["text"] if messages and messages[0]["text"] else f"Conversation {bubble_id}"
-                
-                # Clean the title text - remove markdown code blocks and other problematic formatting
-                clean_text = clean_title_text(first_message_text)
-                
-                # If after cleaning we have empty text, use the bubble ID
-                if not clean_text:
-                    title = f"Conversation {bubble_id}"
-                else:
-                    # Truncate if still too long
-                    title = clean_text[:60] + "..." if len(clean_text) > 60 else clean_text
+                title = first_message_text[:60] + "..." if len(first_message_text) > 60 else first_message_text
                 
                 index_file.write(f"- [{title}](./{bubble_dir_name}/conversation.md) ({len(messages)} messages)\n")
                 
@@ -231,18 +210,13 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
                     content = f_content.read()
                 
                 first_line = content.split("\n", 2)[0] if "\n" in content else content[:50]
-                raw_title = first_line.replace("=== Conversation in ", "").replace(" ===", "")
-                
-                # Apply the same title cleaning logic
-                clean_title = clean_title_text(raw_title)
-                if not clean_title:
-                    title = f"Legacy Conversation {conv_id}"
-                else:
-                    title = clean_title[:57] + "..." if len(clean_title) > 57 else clean_title
+                title = first_line.replace("=== Conversation in ", "").replace(" ===", "")
+                if len(title) > 60:
+                    title = title[:57] + "..."
                 
                 new_filename = f"legacy_conversation_{i+1:03d}_{conv_id}.md"
                 with open(os.path.join(output_dir, new_filename), "w", encoding="utf-8") as f_new:
-                    f_new.write(f"# Legacy Conversation: {clean_title}\n\n")
+                    f_new.write(f"# Legacy Conversation: {title}\n\n")
                     f_new.write(f"ID: {conv_id}\n\n")
                     f_new.write("```\n")
                     f_new.write(content)
