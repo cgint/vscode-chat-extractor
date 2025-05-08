@@ -5,11 +5,15 @@
 #
 # Options:
 #   -c, --clean     Use cleaned (sanitized) titles in the output index
+#   -h, --html      Generate HTML versions of all markdown files
+#   -s, --single    Generate a single HTML page containing all conversations
 
 set -e  # Exit on error
 
 # Process command line arguments
 CLEAN_TITLES=0
+GENERATE_HTML=0
+GENERATE_SINGLE_PAGE=0
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -18,101 +22,137 @@ while [[ $# -gt 0 ]]; do
       CLEAN_TITLES=1
       shift # past argument
       ;;
-    -*|--*)
+    -h|--html)
+      GENERATE_HTML=1
+      shift # past argument
+      ;;
+    -s|--single)
+      GENERATE_SINGLE_PAGE=1
+      GENERATE_HTML=1  # Single page requires HTML generation
+      shift # past argument
+      ;;
+    -*|--*) 
       echo "Unknown option $1"
-      echo "Usage: ./extract_and_organize.sh [-c|--clean] <path_to_state.vscdb>"
+      echo "Usage: ./extract_and_organize.sh [-c|--clean] [-h|--html] [-s|--single] <path_to_state.vscdb>"
       exit 1
       ;;
-    *)
-      POSITIONAL_ARGS+=("$1") # save positional arg
+    *) 
+      POSITIONAL_ARGS+=("$1") # save positional argument
       shift # past argument
       ;;
   esac
 done
 
-# Restore positional parameters
-set -- "${POSITIONAL_ARGS[@]}"
-
-# Check if a database file was provided
-if [ $# -lt 1 ]; then
-    echo "Usage: ./extract_and_organize.sh [-c|--clean] <path_to_state.vscdb>"
-    exit 1
+# Check if we have a database path
+if [ ${#POSITIONAL_ARGS[@]} -eq 0 ]; then
+  echo "Error: No database path specified."
+  echo "Usage: ./extract_and_organize.sh [-c|--clean] [-h|--html] [-s|--single] <path_to_state.vscdb>"
+  exit 1
 fi
 
-DB_PATH="$1"
-BASE_DIR=$(dirname "$0")
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-EXTRACTED_CHATS_DIR="extracted_chats"
-DEEP_SEARCH_DIR="found_matches"
-ORGANIZED_CHATS_DIR="organized_chats"
+# Set the database path
+DB_PATH="${POSITIONAL_ARGS[0]}"
 
-# Display the title mode being used
+# Configure options
 if [ $CLEAN_TITLES -eq 1 ]; then
-    echo "Using clean titles mode (sanitized markdown)"
-else
-    echo "Using regular titles mode"
+  echo "Using clean titles mode (sanitized markdown)"
 fi
 
-# Verify database file exists
-if [ ! -f "$DB_PATH" ]; then
-    echo "Error: Database file '$DB_PATH' not found!"
-    exit 1
+if [ $GENERATE_HTML -eq 1 ]; then
+  echo "HTML generation is enabled"
 fi
 
+if [ $GENERATE_SINGLE_PAGE -eq 1 ]; then
+  echo "Single-page HTML generation is enabled"
+fi
+
+# Create a timestamp for this extraction
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Output directories
+MD_OUTPUT_DIR="organized_chats"
+HTML_OUTPUT_DIR="organized_chats/html"
+
+# Start the extraction process
 echo "==== Starting extraction process ===="
 echo "Database: $DB_PATH"
 echo "Timestamp: $TIMESTAMP"
-echo ""
 
-# Create output directories
-mkdir -p "$EXTRACTED_CHATS_DIR" "$DEEP_SEARCH_DIR" "$ORGANIZED_CHATS_DIR"
+# Step 1: Search for chat data using deep search
+echo -e "\nStep 1: Running deep search to extract chat content..."
+python deep_search_extract.py "$DB_PATH" "chat"
+echo "Deep search completed, results in: found_matches"
 
-# Step 1: Extract chat data using deep_search_extract.py
-echo "Step 1: Running deep search to extract chat content..."
-python "$BASE_DIR/deep_search_extract.py" "$DB_PATH" "chat" "$DEEP_SEARCH_DIR"
-echo "Deep search completed, results in: $DEEP_SEARCH_DIR"
-echo ""
+# Step 2: Extract chat data
+echo -e "\nStep 2: Extracting chat data..."
+python extract_all_chats.py "$DB_PATH" | grep -v "DEBUG:" | grep -v "INFO:"
+echo "Chat data extracted to: extracted_chats"
 
-# Step 2: Extract chat data using extract_chat.py
-echo "Step 2: Extracting chat data..."
-python "$BASE_DIR/extract_chat.py" "$DB_PATH" "$EXTRACTED_CHATS_DIR"
-echo "Chat data extracted to: $EXTRACTED_CHATS_DIR"
-echo ""
+# Step 3: Organize chat data into markdown files
+echo -e "\nStep 3: Organizing chat data..."
+echo "Running chat organization from 'extracted_chats' to '$MD_OUTPUT_DIR'"
 
-# Step 3: Organize the extracted chats
-echo "Step 3: Organizing chat data..."
 if [ $CLEAN_TITLES -eq 1 ]; then
-    # Use the updated script with cleaned titles
-    python "$BASE_DIR/organize_chats.py" "$EXTRACTED_CHATS_DIR" "$ORGANIZED_CHATS_DIR"
-    echo "Chat organization complete with clean titles. Organized chats in: $ORGANIZED_CHATS_DIR"
+  python organize_chats.py --clean extracted_chats "$MD_OUTPUT_DIR"
 else
-    # Use the backup script for original behavior (without title cleaning)
-    python "$BASE_DIR/organize_chats.py.bak" "$EXTRACTED_CHATS_DIR" "$ORGANIZED_CHATS_DIR"
-    echo "Chat organization complete with original titles. Organized chats in: $ORGANIZED_CHATS_DIR"
+  python organize_chats.py extracted_chats "$MD_OUTPUT_DIR"
 fi
-echo ""
+
+if [ $CLEAN_TITLES -eq 1 ]; then
+  echo "Chat organization complete with clean titles. Organized chats in: $MD_OUTPUT_DIR"
+else
+  echo "Chat organization complete. Organized chats in: $MD_OUTPUT_DIR"
+fi
+
+# Step 4: Convert markdown files to HTML if requested
+if [ $GENERATE_HTML -eq 1 ]; then
+  echo -e "\nStep 4: Converting markdown files to HTML..."
+  
+  # Make sure HTML directory exists
+  mkdir -p "$HTML_OUTPUT_DIR"
+  
+  python md_to_html.py "$MD_OUTPUT_DIR" "$HTML_OUTPUT_DIR"
+  echo "HTML conversion complete. HTML files in: $HTML_OUTPUT_DIR"
+  
+  # Generate single page HTML if requested
+  if [ $GENERATE_SINGLE_PAGE -eq 1 ]; then
+    echo -e "\nStep 5: Generating single-page HTML..."
+    python -c "import md_to_html; md_to_html.generate_single_page('$HTML_OUTPUT_DIR', 'index_one_page.html')"
+    echo "Single-page HTML created. File in: $HTML_OUTPUT_DIR/index_one_page.html"
+  fi
+fi
 
 # Create a summary file
 SUMMARY_FILE="extraction_summary_${TIMESTAMP}.txt"
 echo "Creating summary file: $SUMMARY_FILE"
-
 {
-    echo "VSCode Chat Extraction Summary"
-    echo "=============================="
-    echo "Run on: $(date)"
-    echo "Database: $DB_PATH"
-    echo "Title Mode: $([ $CLEAN_TITLES -eq 1 ] && echo 'Clean (sanitized)' || echo 'Regular')"
-    echo ""
-    echo "Output Directories:"
-    echo "- Deep Search Results: $DEEP_SEARCH_DIR"
-    echo "- Extracted Chats: $EXTRACTED_CHATS_DIR" 
-    echo "- Organized Chats: $ORGANIZED_CHATS_DIR"
-    echo ""
-    echo "Next Steps:"
-    echo "1. Check $ORGANIZED_CHATS_DIR/index.md for an index of all conversations"
-    echo "2. Look in $DEEP_SEARCH_DIR for specific search matches"
+  echo "VSCode Chat Extraction Summary"
+  echo "=============================="
+  echo "Timestamp: $TIMESTAMP"
+  echo "Database: $DB_PATH"
+  echo ""
+  echo "Options:"
+  echo "- Clean titles: $([ $CLEAN_TITLES -eq 1 ] && echo "YES" || echo "NO")"
+  echo "- HTML generation: $([ $GENERATE_HTML -eq 1 ] && echo "YES" || echo "NO")"
+  echo "- Single-page HTML: $([ $GENERATE_SINGLE_PAGE -eq 1 ] && echo "YES" || echo "NO")"
+  echo ""
+  echo "Outputs:"
+  echo "- Markdown files: $MD_OUTPUT_DIR/index.md"
+  if [ $GENERATE_HTML -eq 1 ]; then
+    echo "- HTML files: $HTML_OUTPUT_DIR/index.html"
+    if [ $GENERATE_SINGLE_PAGE -eq 1 ]; then
+      echo "- Single-page HTML: $HTML_OUTPUT_DIR/index_one_page.html"
+    fi
+  fi
 } > "$SUMMARY_FILE"
 
 echo "==== Extraction process complete ===="
-echo "See $SUMMARY_FILE for a summary of all outputs"
-echo "Main output for viewing conversations: $ORGANIZED_CHATS_DIR/index.md" 
+echo "See ${SUMMARY_FILE} for a summary of all outputs"
+echo "Main output for viewing conversations:"
+echo "- Markdown: $MD_OUTPUT_DIR/index.md"
+if [ $GENERATE_HTML -eq 1 ]; then
+  echo "- HTML: $HTML_OUTPUT_DIR/index.html"
+  if [ $GENERATE_SINGLE_PAGE -eq 1 ]; then
+    echo "- Single HTML page: $HTML_OUTPUT_DIR/index_one_page.html"
+  fi
+fi 

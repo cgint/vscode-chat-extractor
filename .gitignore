@@ -1,13 +1,15 @@
 all_extracted_chats/
 extracted_chats/
-organized_chats/
 found_matches/
+organized_chats/
+state.vscdb
+sqlite*/
+extraction_summary_*.txt
+testclean/
+
 sqlite*/
 *.vscdb
 *.sql
-extraction_summary_*.txt
-
-# Do not add ignores specific to your repository here.
 # Add them in a files named .extra_repo_ignores in your repository instead.
 # Contents of .extra_repo_ignores will be prepended to the ignores file in this directory.
 

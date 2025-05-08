@@ -5,7 +5,6 @@ import json
 import os
 import sys
 import re
-import binascii
 
 def deep_search_and_extract(db_path, search_term, output_dir="found_matches"):
     """

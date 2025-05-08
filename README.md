@@ -2,7 +2,27 @@
 
 This set of tools helps extract chat history data from VSCode's SQLite database file (`state.vscdb`).
 
-## Available Scripts
+## Quick Start (All-in-One Script)
+
+The easiest way to extract, organize, and visualize your chat history is with the `extract_and_organize.sh` script:
+
+```bash
+# Extract with clean titles, generate HTML and a single-page HTML file containing all conversations
+./extract_and_organize.sh -c -h -s path/to/state.vscdb
+
+# Extract with clean titles and generate HTML files
+./extract_and_organize.sh -c -h path/to/state.vscdb
+
+# Extract with original titles only
+./extract_and_organize.sh path/to/state.vscdb
+```
+
+Options:
+- `-c, --clean`: Use sanitized titles (removes markdown formatting and code blocks)
+- `-h, --html`: Generate HTML versions of all markdown files (requires `markdown` Python package)
+- `-s, --single`: Generate a single HTML page containing all conversations (automatically enables `-h`)
+
+## Available Individual Scripts
 
 ### 1. Extract Specific Chat Content
 
@@ -34,6 +54,26 @@ python deep_search_extract.py path/to/state.vscdb "your search term" [output_dir
 
 This performs a more thorough search through all binary data and handles multiple encoding formats.
 
+### 4. Organize Extracted Chats
+
+Use `organize_chats.py` to organize the extracted chat data into a more browsable format:
+
+```bash
+python organize_chats.py extracted_chats organized_chats
+```
+
+This creates an index file and organizes conversations into directories.
+
+### 5. Convert Markdown to HTML
+
+Use `md_to_html.py` to convert all markdown files to HTML for easier viewing in browsers:
+
+```bash
+python md_to_html.py organized_chats [output_directory]
+```
+
+If no output directory is specified, HTML files will be created alongside markdown files.
+
 ## Output Files
 
 Each script creates a directory with various output files:
@@ -45,6 +85,12 @@ Each script creates a directory with various output files:
 
 - Python 3.6+
 - SQLite3 (usually included with Python)
+- markdown>=3.4.0 (only needed for HTML generation)
+
+To install required packages:
+```bash
+pip install -r requirements.txt
+```
 
 ## Tips for Finding Chat History
 

@@ -1,9 +1,8 @@
 all_extracted_chats/
-organized_chats/
-organized_chats/
+# organized_chats/
 found_matches/
 sqlite*/
-*.vscdb
+#*.vscdb
 *.sql
 extraction_summary_*.txt
 

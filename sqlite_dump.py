@@ -4,7 +4,6 @@ import sqlite3
 import json
 import os
 import sys
-import re
 from datetime import datetime
 
 def dump_sqlite_db(db_path, output_dir="sqlite_dump"):
@@ -186,7 +185,7 @@ def dump_sqlite_db(db_path, output_dir="sqlite_dump"):
         
     conn.close()
     print(f"\nDatabase dump complete. All files saved to {output_dir}")
-    print(f"You can now search through the text files for your content.")
+    print("You can now search through the text files for your content.")
     print(f"Try: grep -r 'your search term' {output_dir}/")
 
 def extract_chats(db_path, output_dir="extracted_chats"):

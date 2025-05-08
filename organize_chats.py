@@ -27,6 +27,15 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
         # Strip leading/trailing whitespace
         return text.strip()
     
+    # Helper function to find all conversation files in the output directory
+    def find_conversation_files(directory):
+        result = []
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if file.endswith(".md") and "conversation" in file.lower() and file != "index.md":
+                    result.append(os.path.join(root, file))
+        return result
+    
     # Step 1: Find all conversation files (legacy, might not be primary source for new logic)
     conversation_files = glob.glob(os.path.join(input_dir, "conversation_*.txt"))
     
@@ -45,6 +54,8 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
     with open(os.path.join(output_dir, "index.md"), "w", encoding="utf-8") as index_file:
         index_file.write("# Chat History Index\n\n")
         index_file.write(f"Organized on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        
+        conversation_files_processed = False
         
         # Organize bubbles by main conversation ID (bubbleId from filename)
         if bubble_files:
@@ -221,6 +232,7 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
 
         # Process legacy conversation files (if any, and if desired)
         if conversation_files:
+            conversation_files_processed = True
             index_file.write("\n## Legacy Conversations (from .txt files)\n\n")
             for i, conv_file_path in enumerate(conversation_files):
                 # This part remains as is, as it processes different source files
@@ -250,15 +262,34 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
                 
                 index_file.write(f"- (Legacy) [{title}](./{new_filename})\n")
 
-        # Section for specific search term (if this script is also responsible for it)
-        # This part is from original script, adjust if it's handled elsewhere
-        index_file.write("\n## Search Results for 'node demo.js departures 8100013'\n\n")
+        # If no bubble or conversation files were processed, try to find existing conversation files
+        if not bubble_files and not conversation_files_processed:
+            # Find all conversation.md files in the output directory
+            conversation_md_files = find_conversation_files(output_dir)
+            if conversation_md_files:
+                index_file.write("\n## Existing Conversations\n\n")
+                for i, conv_file_path in enumerate(conversation_md_files):
+                    # Get the relative path to the output directory
+                    rel_path = os.path.relpath(conv_file_path, output_dir)
+                    
+                    # Read the file to extract a title
+                    with open(conv_file_path, "r", encoding="utf-8") as f_content:
+                        first_line = f_content.readline().strip()
+                        title = first_line.replace("# ", "")
+                        if len(title) > 60:
+                            title = title[:57] + "..."
+                    
+                    index_file.write(f"- [{title}](./{rel_path})\n")
+
+        # Section for specific search term (add only if desired)
+        search_term = "node demo.js departures 8100013"
+        index_file.write(f"\n## Search Results for '{search_term}'\n\n")
         search_results_list = []
         # This search might need to be adapted if tool_output_files are not the sole source
         for tool_file_path in tool_output_files:
             with open(tool_file_path, "r", encoding="utf-8") as f_tool:
                 content = f_tool.read()
-                if "node demo.js departures 8100013" in content:
+                if search_term in content:
                     search_results_list.append({
                         "file": tool_file_path,
                         "content": content
@@ -267,7 +298,7 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
         if search_results_list:
             search_result_md_file = os.path.join(output_dir, "search_results_node_demo.md")
             with open(search_result_md_file, "w", encoding="utf-8") as f_search:
-                f_search.write("# Search Results for 'node demo.js departures 8100013'\n\n")
+                f_search.write(f"# Search Results for '{search_term}'\n\n")
                 for idx, result in enumerate(search_results_list):
                     filename = os.path.basename(result["file"])
                     f_search.write(f"## Match {idx+1}: {filename}\n\n")
@@ -277,7 +308,7 @@ def organize_chats(input_dir="extracted_chats", output_dir="organized_chats"):
             
             index_file.write(f"Found {len(search_results_list)} matches. [View all 'node demo.js' matches](./search_results_node_demo.md)\n\n")
         else:
-            index_file.write("No matches found for 'node demo.js departures 8100013'.\n")
+            index_file.write(f"No matches found for '{search_term}'.\n")
     
     print(f"\nChat organization complete. All files saved to {output_dir}")
     print(f"Check {os.path.join(output_dir, 'index.md')} for an index of all conversations")

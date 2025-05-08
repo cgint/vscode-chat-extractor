@@ -132,7 +132,7 @@ def dump_sqlite_db(db_path, output_dir="sqlite_dump"):
         
     conn.close()
     print(f"\nDatabase dump complete. All files saved to {output_dir}")
-    print(f"You can now search through the text files for your content.")
+    print("You can now search through the text files for your content.")
     print(f"To search for specific text: grep -r 'your search term' {output_dir}/")
 
 if __name__ == "__main__":
