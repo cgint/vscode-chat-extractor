@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VSCode Chat Viewer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h1>Conversations</h1>
+            <div id="conversation-list">
+                <!-- Conversation list will be populated here -->
+                <p>Loading conversations...</p>
+            </div>
+        </aside>
+        <main class="chat-area">
+            <div id="chat-header">
+                <h2 id="current-conversation-title">Select a conversation</h2>
+            </div>
+            <div id="message-list">
+                <!-- Messages will be populated here -->
+                <p class="placeholder">Select a conversation from the list to view messages.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/lib/marked.min.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>

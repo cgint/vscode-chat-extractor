@@ -192,7 +192,7 @@ def convert_md_to_html(input_dir="organized_chats", output_dir=None):
         with open(index_html_path, 'w', encoding='utf-8') as f:
             f.write(html_doc)
         
-        print(f"Created index.html from index.md")
+        print("Created index.html from index.md")
     
     # Process each markdown file (except index.md which was already processed)
     for md_file in md_files:

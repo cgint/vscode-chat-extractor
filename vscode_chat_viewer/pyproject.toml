@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "vscode-chat-viewer"
+version = "0.1.0"
+description = "A web application to view VSCode chat conversations."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+pydantic = "*"
+python-dotenv = "*"
+# For Markdown rendering in message text if needed server-side (client-side chosen for now)
+# markdown = "*" 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+ruff = "*"
+mypy = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
